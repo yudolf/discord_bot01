@@ -16,7 +16,7 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 # 設定
 ALLOWED_GUILD_ID = 1397720381149806723
 OBSIDIAN_CHANNEL_ID = 1398238810730664056
-OBSIDIAN_VAULT_PATH = os.getenv('OBSIDIAN_VAULT_PATH', "/tmp/daily_notes/")
+OBSIDIAN_VAULT_PATH = os.getenv('OBSIDIAN_VAULT_PATH', "/app/daily_notes/")
 
 # 日本時間のタイムゾーン
 JST = timezone(timedelta(hours=9))
@@ -41,34 +41,16 @@ def get_daily_note_path(date_str):
     if '..' in date_str or '/' in date_str or '\\' in date_str:
         raise ValueError(f"不正な文字が含まれています: {date_str}")
     
-    # 日付をスラッシュ形式に変換 (2025-07-25 -> 2025/07/25)
-    date_parts = date_str.split('-')
-    date_dir = '/'.join(date_parts)  # 2025/07/25
-    
-    # 日付別ディレクトリのパスを作成
-    date_directory = os.path.join(OBSIDIAN_VAULT_PATH, date_dir)
-    
-    print(f"🗂️ ディレクトリ作成試行: {date_directory}")
-    
+    # ベースディレクトリを確保
     try:
-        # ディレクトリが存在しない場合は作成
-        os.makedirs(date_directory, exist_ok=True)
-        print(f"✅ ディレクトリ作成成功: {date_directory}")
-        
-        # ディレクトリが実際に存在するか確認
-        if os.path.exists(date_directory):
-            print(f"✅ ディレクトリ存在確認: OK")
-        else:
-            print(f"❌ ディレクトリ存在確認: NG")
-            
+        os.makedirs(OBSIDIAN_VAULT_PATH, exist_ok=True)
+        print(f"✅ ベースディレクトリ確認完了: {OBSIDIAN_VAULT_PATH}")
     except Exception as e:
-        print(f"❌ ディレクトリ作成エラー: {e}")
-        # エラーの場合は元のパスに戻す
-        return os.path.join(OBSIDIAN_VAULT_PATH, f"{date_str}.md")
+        print(f"❌ ベースディレクトリ作成エラー: {e}")
     
-    # ファイルパスを返す
-    file_path = os.path.join(date_directory, f"{date_str}.md")
-    print(f"📄 最終ファイルパス: {file_path}")
+    # シンプルなファイルパス構成: /app/daily_notes/2025-07-25.md
+    file_path = os.path.join(OBSIDIAN_VAULT_PATH, f"{date_str}.md")
+    print(f"📄 ファイルパス: {file_path}")
     return file_path
 
 def get_next_message_number(daily_note_path):
@@ -247,10 +229,6 @@ async def obsidian_status(interaction: discord.Interaction):
     today = datetime.now(JST).strftime("%Y-%m-%d")
     today_note_path = get_daily_note_path(today)
     
-    # 日付ディレクトリのパス
-    date_parts = today.split('-')
-    date_dir = '/'.join(date_parts)
-    
     embed = discord.Embed(
         title="📝 Obsidianデイリーノート状態",
         color=0x9f7aea
@@ -259,12 +237,6 @@ async def obsidian_status(interaction: discord.Interaction):
     embed.add_field(
         name="ベースパス",
         value=f"`{OBSIDIAN_VAULT_PATH}`",
-        inline=False
-    )
-    
-    embed.add_field(
-        name="今日のディレクトリ",
-        value=f"`{date_dir}/`",
         inline=False
     )
     
