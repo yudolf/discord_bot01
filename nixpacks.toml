@@ -1,13 +1,7 @@
 providers = ["python"]
 
-[phases.setup]
-nixPkgs = ["python3", "python3Packages.pip"]
-
-[phases.install]
-cmds = ["pip install -r requirements_news.txt"]
-
-[phases.build]
-cmds = []
+[variables]
+PYTHONPATH = "/app"
 
 [start]
 cmd = "python3 news_bot.py"
