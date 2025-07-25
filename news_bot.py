@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from datetime import time, datetime, timezone, timedelta
 import aiohttp
 import xml.etree.ElementTree as ET
+import re
 
 load_dotenv('.env.news')
 
@@ -40,8 +41,23 @@ async def fetch_nhk_news():
                     for item in root.findall('.//item')[:3]:
                         title = item.find('title').text if item.find('title') is not None else 'タイトル不明'
                         link = item.find('link').text if item.find('link') is not None else ''
-                        # OGPプレビューを無効化しつつタイトルにリンクを埋め込み
-                        news_items.append(f'・[{title}](<{link}>)')
+                        
+                        # 記事内容を取得（description または content:encoded を試す）
+                        description = item.find('description')
+                        content_text = ''
+                        if description is not None and description.text:
+                            content_text = description.text
+                            # HTMLタグを簡単に除去
+                            content_text = re.sub('<[^>]+>', '', content_text)
+                            # 長すぎる場合は省略
+                            if len(content_text) > 200:
+                                content_text = content_text[:200] + '...'
+                        
+                        # タイトル + 内容 + リンク
+                        if content_text:
+                            news_items.append(f'・[{title}](<{link}>)\n　{content_text}')
+                        else:
+                            news_items.append(f'・[{title}](<{link}>)')
                     
                     return news_items
     except Exception as e:
@@ -60,8 +76,23 @@ async def fetch_yahoo_news():
                     for item in root.findall('.//item')[:3]:
                         title = item.find('title').text if item.find('title') is not None else 'タイトル不明'
                         link = item.find('link').text if item.find('link') is not None else ''
-                        # OGPプレビューを無効化しつつタイトルにリンクを埋め込み
-                        news_items.append(f'・[{title}](<{link}>)')
+                        
+                        # 記事内容を取得
+                        description = item.find('description')
+                        content_text = ''
+                        if description is not None and description.text:
+                            content_text = description.text
+                            # HTMLタグを簡単に除去
+                            content_text = re.sub('<[^>]+>', '', content_text)
+                            # 長すぎる場合は省略
+                            if len(content_text) > 200:
+                                content_text = content_text[:200] + '...'
+                        
+                        # タイトル + 内容 + リンク
+                        if content_text:
+                            news_items.append(f'・[{title}](<{link}>)\n　{content_text}')
+                        else:
+                            news_items.append(f'・[{title}](<{link}>)')
                     
                     return news_items
     except Exception as e:
@@ -80,8 +111,23 @@ async def fetch_google_news():
                     for item in root.findall('.//item')[:3]:
                         title = item.find('title').text if item.find('title') is not None else 'タイトル不明'
                         link = item.find('link').text if item.find('link') is not None else ''
-                        # OGPプレビューを無効化しつつタイトルにリンクを埋め込み
-                        news_items.append(f'・[{title}](<{link}>)')
+                        
+                        # 記事内容を取得
+                        description = item.find('description')
+                        content_text = ''
+                        if description is not None and description.text:
+                            content_text = description.text
+                            # HTMLタグを簡単に除去
+                            content_text = re.sub('<[^>]+>', '', content_text)
+                            # 長すぎる場合は省略
+                            if len(content_text) > 200:
+                                content_text = content_text[:200] + '...'
+                        
+                        # タイトル + 内容 + リンク
+                        if content_text:
+                            news_items.append(f'・[{title}](<{link}>)\n　{content_text}')
+                        else:
+                            news_items.append(f'・[{title}](<{link}>)')
                     
                     return news_items
     except Exception as e:
