@@ -27,6 +27,13 @@ GOOGLE_NEWS_URL = 'https://news.google.com/rss?hl=ja&gl=JP&ceid=JP:ja'
 # 日本時間のタイムゾーン
 JST = timezone(timedelta(hours=9))
 
+# 最新のニュース配信内容を保存
+latest_news = {
+    'morning': None,
+    'lunch': None, 
+    'evening': None
+}
+
 async def fetch_nhk_news():
     try:
         async with aiohttp.ClientSession() as session:
@@ -39,7 +46,8 @@ async def fetch_nhk_news():
                     for item in root.findall('.//item')[:3]:
                         title = item.find('title').text if item.find('title') is not None else 'タイトル不明'
                         link = item.find('link').text if item.find('link') is not None else ''
-                        news_items.append(f'・{title}\n{link}')
+                        # OGPプレビューを無効化しつつタイトルにリンクを埋め込み
+                        news_items.append(f'・[{title}](<{link}>)')
                     
                     return news_items
     except Exception as e:
@@ -58,7 +66,8 @@ async def fetch_yahoo_news():
                     for item in root.findall('.//item')[:3]:
                         title = item.find('title').text if item.find('title') is not None else 'タイトル不明'
                         link = item.find('link').text if item.find('link') is not None else ''
-                        news_items.append(f'・{title}\n{link}')
+                        # OGPプレビューを無効化しつつタイトルにリンクを埋め込み
+                        news_items.append(f'・[{title}](<{link}>)')
                     
                     return news_items
     except Exception as e:
@@ -77,36 +86,87 @@ async def fetch_google_news():
                     for item in root.findall('.//item')[:3]:
                         title = item.find('title').text if item.find('title') is not None else 'タイトル不明'
                         link = item.find('link').text if item.find('link') is not None else ''
-                        news_items.append(f'・{title}\n{link}')
+                        # OGPプレビューを無効化しつつタイトルにリンクを埋め込み
+                        news_items.append(f'・[{title}](<{link}>)')
                     
                     return news_items
     except Exception as e:
         print(f'Google News取得エラー: {e}')
         return ['Google Newsの取得に失敗しました']
 
-@tasks.loop(time=time(hour=6, minute=0))
+@tasks.loop(time=time(hour=6, minute=0, tzinfo=JST))
 async def morning_news_task():
     channel = bot.get_channel(GREETING_CHANNEL_ID)
     if channel:
         news_items = await fetch_nhk_news()
         message = '🌅 おはようございます！今日の主要ニュースをお届けします\n\n' + '\n\n'.join(news_items)
         await channel.send(message)
+        # 最新配信内容を保存
+        latest_news['morning'] = message
 
-@tasks.loop(time=time(hour=12, minute=0))
+@tasks.loop(time=time(hour=12, minute=0, tzinfo=JST))
 async def lunch_news_task():
     channel = bot.get_channel(GREETING_CHANNEL_ID)
     if channel:
         news_items = await fetch_yahoo_news()
         message = '🍽️ お昼のニュースをお届けします\n\n' + '\n\n'.join(news_items)
         await channel.send(message)
+        # 最新配信内容を保存
+        latest_news['lunch'] = message
 
-@tasks.loop(time=time(hour=18, minute=0))
+@tasks.loop(time=time(hour=18, minute=0, tzinfo=JST))
 async def evening_news_task():
     channel = bot.get_channel(GREETING_CHANNEL_ID)
     if channel:
         news_items = await fetch_google_news()
         message = '🌇 夕方のニュースをお届けします\n\n' + '\n\n'.join(news_items)
         await channel.send(message)
+        # 最新配信内容を保存
+        latest_news['evening'] = message
+
+async def send_latest_news(channel):
+    """直近の自動配信ニュースを再送信"""
+    try:
+        now = datetime.now(JST)
+        current_hour = now.hour
+        
+        # 時間帯に応じて最適なニュースを選択
+        if 6 <= current_hour < 12:
+            # 朝の時間帯 - 朝のニュースを優先
+            if latest_news['morning']:
+                await channel.send("📰 **最新の朝ニュース**\n" + latest_news['morning'])
+            elif latest_news['evening']:
+                await channel.send("📰 **昨夜のニュース**\n" + latest_news['evening'])
+            elif latest_news['lunch']:
+                await channel.send("📰 **昨日のお昼ニュース**\n" + latest_news['lunch'])
+            else:
+                await channel.send("📰 まだニュースが配信されていません。しばらくお待ちください。")
+                
+        elif 12 <= current_hour < 18:
+            # 昼の時間帯 - 昼のニュースを優先
+            if latest_news['lunch']:
+                await channel.send("📰 **最新のお昼ニュース**\n" + latest_news['lunch'])
+            elif latest_news['morning']:
+                await channel.send("📰 **今朝のニュース**\n" + latest_news['morning'])
+            elif latest_news['evening']:
+                await channel.send("📰 **昨夜のニュース**\n" + latest_news['evening'])
+            else:
+                await channel.send("📰 まだニュースが配信されていません。しばらくお待ちください。")
+                
+        else:
+            # 夜の時間帯 - 夜のニュースを優先
+            if latest_news['evening']:
+                await channel.send("📰 **最新の夕方ニュース**\n" + latest_news['evening'])
+            elif latest_news['lunch']:
+                await channel.send("📰 **今日のお昼ニュース**\n" + latest_news['lunch'])
+            elif latest_news['morning']:
+                await channel.send("📰 **今朝のニュース**\n" + latest_news['morning'])
+            else:
+                await channel.send("📰 まだニュースが配信されていません。しばらくお待ちください。")
+                
+    except Exception as e:
+        print(f"❌ ニュース再送信エラー: {e}")
+        await channel.send("❌ ニュースの取得に失敗しました。")
 
 @bot.event
 async def on_ready():
@@ -139,8 +199,14 @@ async def on_message(message):
     
     print(f"✅ メッセージ受信 - チャンネルID: {message.channel.id}, 作者: {message.author.display_name}, 内容: {message.content}")
     
+    # ニューストリガー機能
+    content_lower = message.content.lower()
+    if any(keyword in content_lower for keyword in ['ニュース', 'news', '最新', 'ニュース教えて', 'ニュースある？']):
+        await send_latest_news(message.channel)
+        print(f"📰 ニューストリガー実行完了")
+    
     # エコー機能は特定チャンネルでのみ動作
-    if message.channel.id == ECHO_CHANNEL_ID:
+    elif message.channel.id == ECHO_CHANNEL_ID:
         await message.channel.send(message.content)
         print(f"🔄 エコー送信完了")
     
