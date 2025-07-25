@@ -27,12 +27,6 @@ GOOGLE_NEWS_URL = 'https://news.google.com/rss?hl=ja&gl=JP&ceid=JP:ja'
 # 日本時間のタイムゾーン
 JST = timezone(timedelta(hours=9))
 
-# 最新のニュース配信内容を保存
-latest_news = {
-    'morning': None,
-    'lunch': None, 
-    'evening': None
-}
 
 async def fetch_nhk_news():
     try:
@@ -101,8 +95,6 @@ async def morning_news_task():
         news_items = await fetch_nhk_news()
         message = '🌅 おはようございます！今日の主要ニュースをお届けします\n\n' + '\n\n'.join(news_items)
         await channel.send(message)
-        # 最新配信内容を保存
-        latest_news['morning'] = message
 
 @tasks.loop(time=time(hour=12, minute=0, tzinfo=JST))
 async def lunch_news_task():
@@ -111,8 +103,6 @@ async def lunch_news_task():
         news_items = await fetch_yahoo_news()
         message = '🍽️ お昼のニュースをお届けします\n\n' + '\n\n'.join(news_items)
         await channel.send(message)
-        # 最新配信内容を保存
-        latest_news['lunch'] = message
 
 @tasks.loop(time=time(hour=18, minute=0, tzinfo=JST))
 async def evening_news_task():
@@ -121,52 +111,37 @@ async def evening_news_task():
         news_items = await fetch_google_news()
         message = '🌇 夕方のニュースをお届けします\n\n' + '\n\n'.join(news_items)
         await channel.send(message)
-        # 最新配信内容を保存
-        latest_news['evening'] = message
 
 async def send_latest_news(channel):
-    """直近の自動配信ニュースを再送信"""
+    """時間帯に応じて適切なメディアからニュースを取得・送信"""
     try:
         now = datetime.now(JST)
         current_hour = now.hour
         
-        # 時間帯に応じて最適なニュースを選択
-        if 6 <= current_hour < 12:
-            # 朝の時間帯 - 朝のニュースを優先
-            if latest_news['morning']:
-                await channel.send("📰 **最新の朝ニュース**\n" + latest_news['morning'])
-            elif latest_news['evening']:
-                await channel.send("📰 **昨夜のニュース**\n" + latest_news['evening'])
-            elif latest_news['lunch']:
-                await channel.send("📰 **昨日のお昼ニュース**\n" + latest_news['lunch'])
-            else:
-                await channel.send("📰 まだニュースが配信されていません。しばらくお待ちください。")
-                
-        elif 12 <= current_hour < 18:
-            # 昼の時間帯 - 昼のニュースを優先
-            if latest_news['lunch']:
-                await channel.send("📰 **最新のお昼ニュース**\n" + latest_news['lunch'])
-            elif latest_news['morning']:
-                await channel.send("📰 **今朝のニュース**\n" + latest_news['morning'])
-            elif latest_news['evening']:
-                await channel.send("📰 **昨夜のニュース**\n" + latest_news['evening'])
-            else:
-                await channel.send("📰 まだニュースが配信されていません。しばらくお待ちください。")
-                
+        # 時間帯に応じてメディアとメッセージを選択
+        if 6 <= current_hour < 12 or current_hour == 7:
+            # 朝の時間帯 - NHKニュース
+            news_items = await fetch_nhk_news()
+            header = "📰 **NHK主要ニュース** (朝の時間帯)"
+            
+        elif 12 <= current_hour < 18 or current_hour == 13:
+            # 昼の時間帯 - Yahoo!ニュース
+            news_items = await fetch_yahoo_news()
+            header = "📰 **Yahoo!ニュース** (お昼の時間帯)"
+            
         else:
-            # 夜の時間帯 - 夜のニュースを優先
-            if latest_news['evening']:
-                await channel.send("📰 **最新の夕方ニュース**\n" + latest_news['evening'])
-            elif latest_news['lunch']:
-                await channel.send("📰 **今日のお昼ニュース**\n" + latest_news['lunch'])
-            elif latest_news['morning']:
-                await channel.send("📰 **今朝のニュース**\n" + latest_news['morning'])
-            else:
-                await channel.send("📰 まだニュースが配信されていません。しばらくお待ちください。")
-                
+            # 夜の時間帯 - Google News
+            news_items = await fetch_google_news()
+            header = "📰 **Google News** (夜の時間帯)"
+        
+        # ニュースを送信
+        message = header + '\n\n' + '\n\n'.join(news_items)
+        await channel.send(message)
+        print(f"✅ リアルタイムニュース配信完了 - {current_hour}時")
+        
     except Exception as e:
-        print(f"❌ ニュース再送信エラー: {e}")
-        await channel.send("❌ ニュースの取得に失敗しました。")
+        print(f"❌ リアルタイムニュース取得エラー: {e}")
+        await channel.send("❌ ニュースの取得に失敗しました。しばらく時間をおいて再度お試しください。")
 
 @bot.event
 async def on_ready():
