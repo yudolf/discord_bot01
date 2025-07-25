@@ -1,5 +1,7 @@
 # Environment variables
 .env
+.env.news
+.env.obsidian
 
 # Python
 __pycache__/

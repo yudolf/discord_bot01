@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from datetime import datetime, timezone, timedelta
 import io
 
-load_dotenv()
+load_dotenv('.env.obsidian')
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -433,8 +433,8 @@ async def list_notes(interaction: discord.Interaction):
         print(f"❌ ノート一覧取得エラー: {e}")
 
 if __name__ == '__main__':
-    token = os.getenv('DISCORD_TOKEN')
+    token = os.getenv('DISCORD_TOKEN_OBSIDIAN')
     if token:
         bot.run(token)
     else:
-        print('DISCORD_TOKENが設定されていません。.envファイルを確認してください。')
+        print('DISCORD_TOKEN_OBSIDIANが設定されていません。.env.obsidianファイルを確認してください。')

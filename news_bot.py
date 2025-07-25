@@ -7,7 +7,7 @@ from datetime import time, datetime, timezone, timedelta
 import aiohttp
 import xml.etree.ElementTree as ET
 
-load_dotenv()
+load_dotenv('.env.news')
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -245,8 +245,8 @@ async def news_status(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed)
 
 if __name__ == '__main__':
-    token = os.getenv('DISCORD_TOKEN')
+    token = os.getenv('DISCORD_TOKEN_NEWS')
     if token:
         bot.run(token)
     else:
-        print('DISCORD_TOKENが設定されていません。.envファイルを確認してください。')
+        print('DISCORD_TOKEN_NEWSが設定されていません。.env.newsファイルを確認してください。')
