@@ -32,7 +32,7 @@ async def on_message(message):
     
     # メンションまたはリプライの場合のみ反応
     if bot.user in message.mentions or (message.reference and message.reference.resolved and message.reference.resolved.author == bot.user):
-        await message.channel.send('こんにちは！ハロー！')
+        await message.channel.send(message.content)
     
     await bot.process_commands(message)
 
