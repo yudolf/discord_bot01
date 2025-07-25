@@ -1,7 +1,0 @@
-providers = ["python"]
-
-[variables]
-PYTHONPATH = "/app"
-
-[start]
-cmd = "python3 obsidian_bot.py"
