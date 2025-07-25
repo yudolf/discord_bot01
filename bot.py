@@ -185,10 +185,19 @@ async def on_message(message):
     if message.guild.id != ALLOWED_GUILD_ID:
         return
     
+    # デバッグ用：すべてのメッセージの詳細を出力
+    print(f"メッセージ受信 - チャンネルID: {message.channel.id}, 作者: {message.author.display_name}, 内容: {message.content}")
+    
     # 指定されたチャンネルの投稿をObsidianに保存
     if message.channel.id == OBSIDIAN_CHANNEL_ID:
-        print(f"Obsidianチャンネルでメッセージを検出: {message.author.display_name}: {message.content}")
-        await append_to_daily_note(message)
+        print(f"✅ Obsidianチャンネル一致！保存処理開始...")
+        try:
+            await append_to_daily_note(message)
+            print(f"✅ Obsidian保存完了")
+        except Exception as e:
+            print(f"❌ Obsidian保存エラー: {e}")
+    else:
+        print(f"チャンネルID不一致 - 受信: {message.channel.id}, 期待: {OBSIDIAN_CHANNEL_ID}")
     
     # エコー機能は特定チャンネルでのみ動作
     if message.channel.id == ECHO_CHANNEL_ID:
