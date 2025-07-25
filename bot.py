@@ -1,5 +1,5 @@
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 from discord import app_commands
 import os
 from dotenv import load_dotenv
@@ -12,6 +12,13 @@ intents.message_content = True
 bot = commands.Bot(command_prefix='!', intents=intents)
 
 ALLOWED_GUILD_ID = 1397720381149806723
+GREETING_CHANNEL_ID = 1398171685613469746
+
+@tasks.loop(minutes=1)
+async def greeting_task():
+    channel = bot.get_channel(GREETING_CHANNEL_ID)
+    if channel:
+        await channel.send('おはようございます')
 
 @bot.event
 async def on_ready():
@@ -21,6 +28,9 @@ async def on_ready():
         print(f'{len(synced)}個のスラッシュコマンドを同期しました')
     except Exception as e:
         print(f'スラッシュコマンドの同期に失敗しました: {e}')
+    
+    greeting_task.start()
+    print('定期投稿タスクを開始しました')
 
 @bot.event
 async def on_message(message):
