@@ -89,9 +89,39 @@ def ensure_obsidian_directory():
 
 def get_daily_note_path(date_str):
     """指定した日付のデイリーノートファイルパスを取得"""
-    return os.path.join(OBSIDIAN_VAULT_PATH, f"{date_str}.md")
+    # 日付をスラッシュ形式に変換 (2025-07-25 -> 2025/07/25)
+    date_parts = date_str.split('-')
+    date_dir = '/'.join(date_parts)  # 2025/07/25
+    
+    # 日付別ディレクトリのパスを作成
+    date_directory = os.path.join(OBSIDIAN_VAULT_PATH, date_dir)
+    
+    # ディレクトリが存在しない場合は作成
+    os.makedirs(date_directory, exist_ok=True)
+    
+    # ファイルパスを返す
+    return os.path.join(date_directory, f"{date_str}.md")
 
-def format_message_for_obsidian(message):
+def get_next_message_number(daily_note_path):
+    """デイリーノート内の次のメッセージ番号を取得"""
+    if not os.path.exists(daily_note_path):
+        return 1
+    
+    try:
+        with open(daily_note_path, 'r', encoding='utf-8') as file:
+            lines = file.readlines()
+        
+        max_number = 0
+        for line in lines:
+            # "- **時刻** 作者: 内容" の形式を探す
+            if line.strip().startswith('- **') and '**' in line:
+                max_number += 1
+        
+        return max_number + 1
+    except Exception:
+        return 1
+
+def format_message_for_obsidian(message, message_number):
     """DiscordメッセージをObsidian用フォーマットに変換"""
     timestamp = message.created_at.astimezone(JST).strftime("%H:%M")
     author = message.author.display_name
@@ -107,7 +137,7 @@ def format_message_for_obsidian(message):
         for channel in message.channel_mentions:
             content = content.replace(f'<#{channel.id}>', f'#{channel.name}')
     
-    return f"- **{timestamp}** {author}: {content}"
+    return f"{message_number}. **{timestamp}** {author}: {content}"
 
 async def append_to_daily_note(message):
     """メッセージをデイリーノートに追加"""
@@ -119,8 +149,11 @@ async def append_to_daily_note(message):
         date_str = jst_date.strftime("%Y-%m-%d")
         daily_note_path = get_daily_note_path(date_str)
         
+        # 次のメッセージ番号を取得
+        message_number = get_next_message_number(daily_note_path)
+        
         # フォーマットされたメッセージ
-        formatted_message = format_message_for_obsidian(message)
+        formatted_message = format_message_for_obsidian(message, message_number)
         
         # ファイルが存在しない場合、ヘッダーを作成
         if not os.path.exists(daily_note_path):
@@ -132,7 +165,7 @@ async def append_to_daily_note(message):
         with open(daily_note_path, 'a', encoding='utf-8') as file:
             file.write(formatted_message + '\n')
         
-        print(f"メッセージを {date_str}.md に保存しました")
+        print(f"メッセージ#{message_number}を {date_str}.md に保存しました")
         
     except Exception as e:
         print(f"デイリーノート保存エラー: {e}")
@@ -179,14 +212,19 @@ async def on_ready():
 
 @bot.event
 async def on_message(message):
+    print(f"🔥 on_message呼び出し - 作者: {message.author}")
+    
     if message.author == bot.user:
+        print(f"🤖 bot自身のメッセージなのでスキップ")
         return
     
+    print(f"📋 ギルドID確認 - 受信: {message.guild.id if message.guild else 'なし'}, 期待: {ALLOWED_GUILD_ID}")
     if message.guild.id != ALLOWED_GUILD_ID:
+        print(f"❌ ギルドID不一致のためスキップ")
         return
     
     # デバッグ用：すべてのメッセージの詳細を出力
-    print(f"メッセージ受信 - チャンネルID: {message.channel.id}, 作者: {message.author.display_name}, 内容: {message.content}")
+    print(f"✅ メッセージ受信 - チャンネルID: {message.channel.id}, 作者: {message.author.display_name}, 内容: {message.content}")
     
     # 指定されたチャンネルの投稿をObsidianに保存
     if message.channel.id == OBSIDIAN_CHANNEL_ID:
@@ -262,14 +300,25 @@ async def obsidian_status(interaction: discord.Interaction):
     today = datetime.now(JST).strftime("%Y-%m-%d")
     today_note_path = get_daily_note_path(today)
     
+    # 日付ディレクトリのパス
+    date_parts = today.split('-')
+    date_dir = '/'.join(date_parts)
+    date_directory = os.path.join(OBSIDIAN_VAULT_PATH, date_dir)
+    
     embed = discord.Embed(
         title="📝 Obsidianデイリーノート状態",
         color=0x9f7aea
     )
     
     embed.add_field(
-        name="保存パス",
+        name="ベースパス",
         value=f"`{OBSIDIAN_VAULT_PATH}`",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="今日のディレクトリ",
+        value=f"`{date_dir}/`",
         inline=False
     )
     
@@ -288,6 +337,12 @@ async def obsidian_status(interaction: discord.Interaction):
     embed.add_field(
         name="ファイル存在",
         value="✅ 存在" if os.path.exists(today_note_path) else "❌ 未作成",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="フルパス",
+        value=f"`{today_note_path}`",
         inline=False
     )
     
