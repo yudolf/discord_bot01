@@ -3,5 +3,9 @@ providers = ["python"]
 [variables]
 PYTHONPATH = "/app"
 
+[phases.install]
+dependsOn = ["setup"]
+cmds = ["python -m pip install --user -r requirements_obsidian.txt"]
+
 [start]
-cmd = "python3 news_bot.py"
+cmd = "python3 obsidian_bot.py"
