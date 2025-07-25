@@ -96,11 +96,28 @@ def get_daily_note_path(date_str):
     # 日付別ディレクトリのパスを作成
     date_directory = os.path.join(OBSIDIAN_VAULT_PATH, date_dir)
     
-    # ディレクトリが存在しない場合は作成
-    os.makedirs(date_directory, exist_ok=True)
+    print(f"🗂️ ディレクトリ作成試行: {date_directory}")
+    
+    try:
+        # ディレクトリが存在しない場合は作成
+        os.makedirs(date_directory, exist_ok=True)
+        print(f"✅ ディレクトリ作成成功: {date_directory}")
+        
+        # ディレクトリが実際に存在するか確認
+        if os.path.exists(date_directory):
+            print(f"✅ ディレクトリ存在確認: OK")
+        else:
+            print(f"❌ ディレクトリ存在確認: NG")
+            
+    except Exception as e:
+        print(f"❌ ディレクトリ作成エラー: {e}")
+        # エラーの場合は元のパスに戻す
+        return os.path.join(OBSIDIAN_VAULT_PATH, f"{date_str}.md")
     
     # ファイルパスを返す
-    return os.path.join(date_directory, f"{date_str}.md")
+    file_path = os.path.join(date_directory, f"{date_str}.md")
+    print(f"📄 最終ファイルパス: {file_path}")
+    return file_path
 
 def get_next_message_number(daily_note_path):
     """デイリーノート内の次のメッセージ番号を取得"""
