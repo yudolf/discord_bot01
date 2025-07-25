@@ -17,6 +17,7 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 ALLOWED_GUILD_ID = 1397720381149806723
 GREETING_CHANNEL_ID = 1398171685613469746
 OBSIDIAN_CHANNEL_ID = 1398238810730664056
+ECHO_CHANNEL_ID = 1397720382236135446  # エコー機能を使用するチャンネル
 NHK_RSS_URL = 'https://www.nhk.or.jp/rss/news/cat0.xml'
 YAHOO_RSS_URL = 'https://news.yahoo.co.jp/rss/topics/top-picks.xml'
 GOOGLE_NEWS_URL = 'https://news.google.com/rss?hl=ja&gl=JP&ceid=JP:ja'
@@ -163,6 +164,8 @@ async def evening_news_task():
 @bot.event
 async def on_ready():
     print(f'{bot.user}としてログインしました！')
+    print(f'Obsidianデイリーノート保存先: {OBSIDIAN_VAULT_PATH}')
+    print(f'監視チャンネルID: {OBSIDIAN_CHANNEL_ID}')
     try:
         synced = await bot.tree.sync()
         print(f'{len(synced)}個のスラッシュコマンドを同期しました')
@@ -184,9 +187,12 @@ async def on_message(message):
     
     # 指定されたチャンネルの投稿をObsidianに保存
     if message.channel.id == OBSIDIAN_CHANNEL_ID:
+        print(f"Obsidianチャンネルでメッセージを検出: {message.author.display_name}: {message.content}")
         await append_to_daily_note(message)
     
-    await message.channel.send(message.content)
+    # エコー機能は特定チャンネルでのみ動作
+    if message.channel.id == ECHO_CHANNEL_ID:
+        await message.channel.send(message.content)
     
     await bot.process_commands(message)
 
