@@ -1,0 +1,14 @@
+[providers]
+python = "python"
+
+[phases.setup]
+nixPkgs = ["python3", "pip"]
+
+[phases.install]
+cmds = ["pip install -r requirements_news.txt"]
+
+[phases.build]
+cmds = []
+
+[start]
+cmd = "python3 news_bot.py"

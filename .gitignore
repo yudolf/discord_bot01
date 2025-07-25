@@ -3,6 +3,9 @@
 .env.news
 .env.obsidian
 
+# Archive folder (legacy files)
+archive/
+
 # Python
 __pycache__/
 *.py[cod]

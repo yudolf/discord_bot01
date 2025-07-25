@@ -1,0 +1,14 @@
+# アーカイブフォルダを無視
+archive/
+
+# 他のBot用ファイルを無視（ニュースBot用設定の場合）
+obsidian_bot.py
+requirements_obsidian.txt
+.env.obsidian
+
+# 開発用ファイル
+.venv/
+venv/
+*.pyc
+__pycache__/
+.DS_Store
