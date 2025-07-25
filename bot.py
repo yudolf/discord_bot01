@@ -3,6 +3,7 @@ from discord.ext import commands, tasks
 from discord import app_commands
 import os
 from dotenv import load_dotenv
+from datetime import time
 
 load_dotenv()
 
@@ -14,7 +15,7 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 ALLOWED_GUILD_ID = 1397720381149806723
 GREETING_CHANNEL_ID = 1398171685613469746
 
-@tasks.loop(minutes=1)
+@tasks.loop(time=time(hour=7, minute=0))
 async def greeting_task():
     channel = bot.get_channel(GREETING_CHANNEL_ID)
     if channel:
