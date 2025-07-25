@@ -4,6 +4,8 @@ from discord import app_commands
 import os
 from dotenv import load_dotenv
 from datetime import time
+import aiohttp
+import xml.etree.ElementTree as ET
 
 load_dotenv()
 
@@ -14,12 +16,90 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 
 ALLOWED_GUILD_ID = 1397720381149806723
 GREETING_CHANNEL_ID = 1398171685613469746
+NHK_RSS_URL = 'https://www.nhk.or.jp/rss/news/cat0.xml'
+YAHOO_RSS_URL = 'https://news.yahoo.co.jp/rss/topics/top-picks.xml'
+GOOGLE_NEWS_URL = 'https://news.google.com/rss?hl=ja&gl=JP&ceid=JP:ja'
 
-@tasks.loop(time=time(hour=7, minute=0))
+async def fetch_nhk_news():
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(NHK_RSS_URL) as response:
+                if response.status == 200:
+                    content = await response.text()
+                    root = ET.fromstring(content)
+                    
+                    news_items = []
+                    for item in root.findall('.//item')[:3]:
+                        title = item.find('title').text if item.find('title') is not None else 'タイトル不明'
+                        link = item.find('link').text if item.find('link') is not None else ''
+                        news_items.append(f'・{title}\n{link}')
+                    
+                    return news_items
+    except Exception as e:
+        print(f'ニュース取得エラー: {e}')
+        return ['ニュースの取得に失敗しました']
+
+async def fetch_yahoo_news():
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(YAHOO_RSS_URL) as response:
+                if response.status == 200:
+                    content = await response.text()
+                    root = ET.fromstring(content)
+                    
+                    news_items = []
+                    for item in root.findall('.//item')[:3]:
+                        title = item.find('title').text if item.find('title') is not None else 'タイトル不明'
+                        link = item.find('link').text if item.find('link') is not None else ''
+                        news_items.append(f'・{title}\n{link}')
+                    
+                    return news_items
+    except Exception as e:
+        print(f'Yahoo!ニュース取得エラー: {e}')
+        return ['Yahoo!ニュースの取得に失敗しました']
+
+async def fetch_google_news():
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(GOOGLE_NEWS_URL) as response:
+                if response.status == 200:
+                    content = await response.text()
+                    root = ET.fromstring(content)
+                    
+                    news_items = []
+                    for item in root.findall('.//item')[:3]:
+                        title = item.find('title').text if item.find('title') is not None else 'タイトル不明'
+                        link = item.find('link').text if item.find('link') is not None else ''
+                        news_items.append(f'・{title}\n{link}')
+                    
+                    return news_items
+    except Exception as e:
+        print(f'Google News取得エラー: {e}')
+        return ['Google Newsの取得に失敗しました']
+
+@tasks.loop(time=time(hour=6, minute=0))
 async def greeting_task():
     channel = bot.get_channel(GREETING_CHANNEL_ID)
     if channel:
-        await channel.send('おはようございます')
+        news_items = await fetch_nhk_news()
+        message = '🌅 おはようございます！今日の主要ニュースをお届けします\n\n' + '\n\n'.join(news_items)
+        await channel.send(message)
+
+@tasks.loop(time=time(hour=12, minute=0))
+async def lunch_news_task():
+    channel = bot.get_channel(GREETING_CHANNEL_ID)
+    if channel:
+        news_items = await fetch_yahoo_news()
+        message = '🍽️ お昼のニュースをお届けします\n\n' + '\n\n'.join(news_items)
+        await channel.send(message)
+
+@tasks.loop(time=time(hour=18, minute=0))
+async def evening_news_task():
+    channel = bot.get_channel(GREETING_CHANNEL_ID)
+    if channel:
+        news_items = await fetch_google_news()
+        message = '🌇 夕方のニュースをお届けします\n\n' + '\n\n'.join(news_items)
+        await channel.send(message)
 
 @bot.event
 async def on_ready():
@@ -31,6 +111,8 @@ async def on_ready():
         print(f'スラッシュコマンドの同期に失敗しました: {e}')
     
     greeting_task.start()
+    lunch_news_task.start()
+    evening_news_task.start()
     print('定期投稿タスクを開始しました')
 
 @bot.event
