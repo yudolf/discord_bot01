@@ -35,16 +35,18 @@ async def on_message(message):
     await bot.process_commands(message)
 
 @bot.event
-async def on_reaction_add(reaction, user):
-    if user == bot.user:
+async def on_raw_reaction_add(payload):
+    if payload.user_id == bot.user.id:
         return
     
-    if reaction.message.guild.id != ALLOWED_GUILD_ID:
+    if payload.guild_id != ALLOWED_GUILD_ID:
         return
     
-    if str(reaction.emoji) == '👍':
-        message_content = reaction.message.content[:50] + ('...' if len(reaction.message.content) > 50 else '')
-        await reaction.message.channel.send(f'「{message_content}」のメッセージにグッドマークが押されたよ！')
+    if str(payload.emoji) == '👍':
+        channel = bot.get_channel(payload.channel_id)
+        message = await channel.fetch_message(payload.message_id)
+        message_content = message.content[:50] + ('...' if len(message.content) > 50 else '')
+        await channel.send(f'「{message_content}」のメッセージにグッドマークが押されたよ！')
 
 @bot.tree.command(name='help', description='このbotの使い方を表示します')
 async def help_command(interaction: discord.Interaction):
