@@ -22,7 +22,6 @@ JST = timezone(timedelta(hours=9))
 
 # メモリ上でメッセージを管理
 daily_messages = {}  # {date_str: [messages...]}
-sent_files = set()  # 送信済みファイルの日付を記録
 
 def add_message_to_memory(message):
     """メッセージをメモリに追加"""
@@ -49,15 +48,15 @@ def get_available_dates():
     """利用可能な日付の一覧を取得"""
     return sorted(daily_messages.keys(), reverse=True)
 
-async def auto_generate_and_send(channel, date_str):
-    """指定日のマークダウンファイルを自動生成して送信（重複防止）"""
+async def auto_generate_and_send(channel, message):
+    """メッセージ投稿のたびにマークダウンファイルを自動生成して送信"""
     try:
-        if date_str not in daily_messages or not daily_messages[date_str]:
-            return
+        # 日本時間での日付と時刻を取得
+        jst_datetime = message.created_at.astimezone(JST)
+        date_str = jst_datetime.strftime("%Y-%m-%d")
+        time_str = jst_datetime.strftime("%H%M%S")
         
-        # 重複チェック: この日付のファイルを既に送信済みかどうか
-        if date_str in sent_files:
-            print(f"⏭️ {date_str} のファイルは送信済みのためスキップ")
+        if date_str not in daily_messages or not daily_messages[date_str]:
             return
         
         # マークダウンコンテンツを生成
@@ -68,16 +67,15 @@ async def auto_generate_and_send(channel, date_str):
         file_data = io.BytesIO(content_bytes)
         file_data.seek(0)
         
-        # Discordファイルオブジェクトを作成
-        discord_file = discord.File(file_data, filename=f"{date_str}.md")
+        # ファイル名に日付と時刻を含める
+        filename = f"{date_str}_{time_str}.md"
+        discord_file = discord.File(file_data, filename=filename)
         
         # 簡潔なメッセージで送信
         message_count = len(daily_messages[date_str])
         await channel.send(f"📄 **{date_str}** のマークダウンファイルを生成しました ({message_count}件のメッセージ)", file=discord_file)
         
-        # 送信済みとして記録
-        sent_files.add(date_str)
-        print(f"🤖 自動生成完了: {date_str}.md ({message_count}件)")
+        print(f"🤖 自動生成完了: {filename} ({message_count}件)")
         
     except Exception as e:
         print(f"❌ 自動生成エラー: {e}")
@@ -155,9 +153,7 @@ async def on_message(message):
             print(f"✅ メモリ保存完了")
             
             # 自動でマークダウンファイルを生成して送信
-            jst_date = message.created_at.astimezone(JST)
-            date_str = jst_date.strftime("%Y-%m-%d")
-            await auto_generate_and_send(message.channel, date_str)
+            await auto_generate_and_send(message.channel, message)
             
         except Exception as e:
             print(f"❌ メモリ保存・自動生成エラー: {e}")
@@ -279,10 +275,6 @@ async def download_note(interaction: discord.Interaction, date: str = None):
         )
         
         await interaction.response.send_message(embed=embed, file=discord_file)
-        
-        # 手動送信時は送信済み記録をリセット（再生成を可能にする）
-        if target_date in sent_files:
-            sent_files.remove(target_date)
         
         print(f"📤 {target_date}.md をDiscordに送信しました ({message_count}件のメッセージ)")
         
